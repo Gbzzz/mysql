@@ -1,0 +1,53 @@
+version: '3.7'
+
+networks:
+  traefik-public:
+    external: true
+#  interna:
+#    external: false
+
+services:  
+  mysql:
+    container_name: mysql
+    image: mysql:5.7
+    ports:
+      - 3306:3306
+    volumes:
+      - './mysql:/var/lib/mysql'
+    networks:
+      - traefik-public
+#      - interna
+    environment:
+      ALLOW_EMPTY_PASSWORD: "no"
+      MYSQL_ROOT_PASSWORD: pwb
+      MYSQL_DATABASE: pwb
+      MYSQL_USER: pwb
+      MYSQL_PASSWORD: pwb   
+
+############ phpmyadmim ############
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin/phpmyadmin
+    environment:
+      - MYSQL_ROOT_PASSWORD=pwb
+      - PMA_HOST=mysql
+      - TZ=America/Maceio
+    ports:
+      - '9090:80'
+    depends_on:
+      - mysql
+    networks:
+      - traefik-public
+ #     - interna
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-public
+      ## HTTP Routers
+      - traefik.http.routers.phpmyadmin-rtr.entrypoints=websecure
+      - traefik.http.routers.phpmyadmin-rtr.rule=Host(`phpmyadmin.guilhermebraz.tech`)
+      - traefik.http.routers.phpmyadmin-rtr.tls=true
+      - traefik.http.routers.phpmyadmin-rtr.tls.certresolver=letsencrypt
+      ## HTTP Services
+      - traefik.http.services.phpmyadmin-svc.loadbalancer.server.port=80
+      - traefik.http.routers.phpmyadmim-rtr.middlewares=basic-auth@file
